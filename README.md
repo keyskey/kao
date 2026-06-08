@@ -42,6 +42,38 @@ kao run daily --config kao.yaml --date 2026-06-05
 
 - [docs/design-doc.md](docs/design-doc.md) — v1.0 (Accepted)
 
+## ローカル開発
+
+```bash
+# ビルド
+make build
+
+# PostgreSQL 起動とスキーマ適用
+docker compose up -d
+make migrate
+
+# 環境変数
+export GITHUB_TOKEN=ghp_...
+export DATABASE_URL='postgres://kao:kao@localhost:5432/kao?sslmode=disable'
+
+# 日次ジョブ（GitHub 証跡のみ、MVP）
+./bin/kao run daily --config kao.local.yaml --date 2026-06-05
+
+# 個別コマンド
+./bin/kao collect repo-control --config kao.local.yaml --output -
+./bin/kao collect code-change --config kao.local.yaml --date 2026-06-05 --output -
+./bin/kao evaluate --config kao.local.yaml --date 2026-06-05 --output -
+```
+
+ファイル入力での評価（storage 不要）:
+
+```bash
+./bin/kao evaluate --input files \
+  --repo-control testdata/repo_control.jsonl \
+  --code-change testdata/code_change.jsonl \
+  --output -
+```
+
 ## ステータス
 
-設計フェーズ。CLI の実装はこれから。
+MVP 実装中。`repo_control` / `code_change` の GitHub 収集・評価・PostgreSQL/filesystem 保存に対応。

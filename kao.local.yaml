@@ -1,0 +1,56 @@
+# Local development configuration for KAO MVP.
+# Usage:
+#   docker compose up -d
+#   make migrate
+#   export GITHUB_TOKEN=ghp_...
+#   export DATABASE_URL='postgres://kao:kao@localhost:5432/kao?sslmode=disable'
+#   make build && ./bin/kao run daily --config kao.local.yaml --date 2026-06-05
+
+version: v1
+
+storage:
+  backend: postgres
+  postgres:
+    url_env: DATABASE_URL
+  # filesystem example (no DATABASE_URL required):
+  # backend: filesystem
+  # filesystem:
+  #   path: ./evidence
+
+providers:
+  github:
+    org: keyskey
+    token_env: GITHUB_TOKEN
+
+scope:
+  defaults:
+    repositories:
+      include: [kao]
+      exclude: []
+
+evidence:
+  repo_control:
+    provider: github
+  code_change:
+    provider: github
+    ci: [github_actions]
+
+controls:
+  repo_control:
+    branch_protection:
+      enabled: true
+      required_reviews: 1
+      require_codeowner_review: true
+      allow_force_push: false
+      allow_branch_deletion: false
+    codeowners:
+      required: true
+  code_change:
+    ci:
+      require_pass: true
+    approver:
+      must_be_authorized: true
+
+evaluation:
+  code_change:
+    lookback_days: 90
