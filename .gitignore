@@ -1,0 +1,4 @@
+/bin/
+/evidence/
+*.exe
+.DS_Store
