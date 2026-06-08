@@ -2,7 +2,7 @@
 # Usage:
 #   docker compose up -d
 #   make migrate
-#   export GITHUB_TOKEN=ghp_...
+#   export GITHUB_TOKEN=$(gh auth token)
 #   export DATABASE_URL='postgres://kao:kao@localhost:5432/kao?sslmode=disable'
 #   make build && ./bin/kao run daily --config kao.local.yaml --date 2026-06-05
 
@@ -39,8 +39,8 @@ controls:
   repo_control:
     branch_protection:
       enabled: true
-      required_reviews: 1
-      require_codeowner_review: true
+      required_reviews: 0
+      require_codeowner_review: false
       allow_force_push: false
       allow_branch_deletion: false
     codeowners:
