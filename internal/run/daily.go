@@ -36,6 +36,10 @@ func RunDaily(ctx context.Context, opts DailyOptions) error {
 		return fmt.Errorf("code-change collect: %w", err)
 	}
 
+	if err := collect.RunInfraDeployment(ctx, collectOpts); err != nil {
+		return fmt.Errorf("infra-deployment collect: %w", err)
+	}
+
 	evalOpts := evaluate.Options{
 		ConfigPath:   opts.ConfigPath,
 		Date:         date,

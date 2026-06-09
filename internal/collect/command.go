@@ -42,17 +42,34 @@ func NewCommand() *cobra.Command {
 		},
 	}
 
-	for _, c := range []*cobra.Command{cmd, repoControlCmd, codeChangeCmd} {
+	infraDeploymentCmd := &cobra.Command{
+		Use:   "infra-deployment",
+		Short: "Collect infrastructure deployment evidence for a date",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RunInfraDeployment(context.Background(), Options{
+				ConfigPath:   configPath,
+				Repositories: repositories,
+				Output:       output,
+				Date:         date,
+			})
+		},
+	}
+
+	for _, c := range []*cobra.Command{cmd, repoControlCmd, codeChangeCmd, infraDeploymentCmd} {
 		c.PersistentFlags().StringVar(&configPath, "config", "", "path to kao.yaml")
 	}
 	repoControlCmd.Flags().StringVar(&output, "output", "storage", "output destination: storage, -, or file path")
 	codeChangeCmd.Flags().StringVar(&output, "output", "storage", "output destination: storage, -, or file path")
+	infraDeploymentCmd.Flags().StringVar(&output, "output", "storage", "output destination: storage, -, or file path")
 	codeChangeCmd.Flags().StringVar(&date, "date", "", "target date (YYYY-MM-DD, UTC)")
+	infraDeploymentCmd.Flags().StringVar(&date, "date", "", "target date (YYYY-MM-DD, UTC)")
 
 	repoControlCmd.Flags().StringArrayVar(&repositories, "repository", nil, "limit to repository (repeatable)")
 	codeChangeCmd.Flags().StringArrayVar(&repositories, "repository", nil, "limit to repository (repeatable)")
+	infraDeploymentCmd.Flags().StringArrayVar(&repositories, "repository", nil, "limit to repository (repeatable)")
 
 	cmd.AddCommand(repoControlCmd)
 	cmd.AddCommand(codeChangeCmd)
+	cmd.AddCommand(infraDeploymentCmd)
 	return cmd
 }
