@@ -107,6 +107,44 @@ controls: {}
 	}
 }
 
+func TestInfraDeploymentEnabled(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "kao.yaml")
+	content := `
+version: v1
+providers:
+  github:
+    org: testorg
+    token_env: GITHUB_TOKEN
+storage:
+  backend: filesystem
+  filesystem:
+    path: ./evidence
+evidence:
+  infra_deployment:
+    provider: terraform
+    apply_workflows: [terraform-apply.yml]
+controls: {}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.InfraDeploymentEnabled() {
+		t.Error("expected InfraDeploymentEnabled true")
+	}
+
+	empty := &Config{}
+	applyDefaults(empty)
+	if empty.InfraDeploymentEnabled() {
+		t.Error("expected InfraDeploymentEnabled false without provider and apply patterns")
+	}
+}
+
 func TestNormalizeArgoCDServerAddr(t *testing.T) {
 	tests := []struct {
 		in   string

@@ -54,8 +54,10 @@ func RunDaily(ctx context.Context, opts DailyOptions) error {
 		}
 	}
 
-	if err := collect.RunInfraDeployment(ctx, collectOpts); err != nil {
-		return fmt.Errorf("infra-deployment collect: %w", err)
+	if cfg.InfraDeploymentEnabled() {
+		if err := collect.RunInfraDeployment(ctx, collectOpts); err != nil {
+			return fmt.Errorf("infra-deployment collect: %w", err)
+		}
 	}
 
 	evalOpts := evaluate.Options{

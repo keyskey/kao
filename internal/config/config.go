@@ -326,6 +326,14 @@ func (c *Config) AppDeploymentEnabled() bool {
 	return p.ServerEnv != "" || p.TokenEnv != ""
 }
 
+func (c *Config) InfraDeploymentEnabled() bool {
+	id := c.Evidence.InfraDeployment
+	if id.Provider == "" {
+		return false
+	}
+	return len(id.ApplyWorkflows) > 0 || len(id.ApplyJobNames) > 0
+}
+
 func (c *Config) ApplicationsForAppDeployment() RepositoryScope {
 	if c.Evidence.AppDeployment.Scope != nil {
 		return c.Evidence.AppDeployment.Scope.Applications
