@@ -39,6 +39,24 @@ func (p *Postgres) PutRepoControl(ctx context.Context, records []evidence.RepoCo
 	return nil
 }
 
+func (p *Postgres) PutAppDeployment(ctx context.Context, records []evidence.AppDeployment) error {
+	for _, r := range records {
+		payload, err := json.Marshal(r)
+		if err != nil {
+			return err
+		}
+		_, err = p.pool.Exec(ctx, `
+			INSERT INTO app_deployment_evidence (application, deployed_at, payload)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (application, deployed_at) DO UPDATE SET payload = EXCLUDED.payload
+		`, r.Application, r.DeployedAt, payload)
+		if err != nil {
+			return fmt.Errorf("upsert app_deployment %s: %w", r.Application, err)
+		}
+	}
+	return nil
+}
+
 func (p *Postgres) PutInfraDeployment(ctx context.Context, records []evidence.InfraDeployment) error {
 	for _, r := range records {
 		payload, err := json.Marshal(r)
@@ -97,6 +115,30 @@ func (p *Postgres) QueryRepoControl(ctx context.Context, filter Filter) ([]evide
 	defer rows.Close()
 
 	return scanRepoControl(rows)
+}
+
+func (p *Postgres) QueryAppDeployment(ctx context.Context, filter Filter) ([]evidence.AppDeployment, error) {
+	query := `SELECT payload FROM app_deployment_evidence WHERE 1=1`
+	args := []any{}
+	argN := 1
+
+	if filter.Date != "" {
+		query += fmt.Sprintf(` AND deployed_at::date = $%d::date`, argN)
+		args = append(args, filter.Date)
+		argN++
+	}
+	if len(filter.Repositories) > 0 {
+		query += fmt.Sprintf(` AND payload->>'repository' = ANY($%d)`, argN)
+		args = append(args, filter.Repositories)
+	}
+
+	rows, err := p.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanAppDeployment(rows)
 }
 
 func (p *Postgres) QueryInfraDeployment(ctx context.Context, filter Filter) ([]evidence.InfraDeployment, error) {
@@ -210,6 +252,22 @@ func scanRepoControl(rows rowScanner) ([]evidence.RepoControl, error) {
 			return nil, err
 		}
 		result = append(result, rc)
+	}
+	return result, rows.Err()
+}
+
+func scanAppDeployment(rows rowScanner) ([]evidence.AppDeployment, error) {
+	var result []evidence.AppDeployment
+	for rows.Next() {
+		var payload []byte
+		if err := rows.Scan(&payload); err != nil {
+			return nil, err
+		}
+		var ad evidence.AppDeployment
+		if err := json.Unmarshal(payload, &ad); err != nil {
+			return nil, err
+		}
+		result = append(result, ad)
 	}
 	return result, rows.Err()
 }
