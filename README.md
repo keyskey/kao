@@ -36,7 +36,7 @@ CM-001〜010 により統制を評価する。詳細は [設計ドキュメン�
 kao run daily --config kao.yaml --date 2026-06-05
 ```
 
-認証情報は Configuration に平文で書かず、環境変数（`GITHUB_TOKEN`, `DATABASE_URL` 等）から注入する。
+認証情報は Configuration に平文で書かず、環境変数（`GITHUB_TOKEN`, `ARGOCD_SERVER`, `ARGOCD_TOKEN`, `DATABASE_URL` 等）から注入する。`go.mod` の `argoproj/argo-cd/v2` は本番 Argo CD サーバーのバージョンに合わせて pin する。
 
 ## 設計ドキュメント
 

@@ -16,9 +16,11 @@ type Filter struct {
 type Backend interface {
 	PutRepoControl(ctx context.Context, records []evidence.RepoControl) error
 	PutCodeChange(ctx context.Context, records []evidence.CodeChange) error
+	PutAppDeployment(ctx context.Context, records []evidence.AppDeployment) error
 	PutInfraDeployment(ctx context.Context, records []evidence.InfraDeployment) error
 	QueryRepoControl(ctx context.Context, filter Filter) ([]evidence.RepoControl, error)
 	QueryCodeChange(ctx context.Context, filter Filter) ([]evidence.CodeChange, error)
+	QueryAppDeployment(ctx context.Context, filter Filter) ([]evidence.AppDeployment, error)
 	QueryInfraDeployment(ctx context.Context, filter Filter) ([]evidence.InfraDeployment, error)
 	QueryCodeChangeForJoin(ctx context.Context, repos, shas []string, lookbackDays int) ([]evidence.CodeChange, error)
 	PutEvaluations(ctx context.Context, records []evidence.Evaluation) error

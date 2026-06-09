@@ -77,6 +77,19 @@ type CIRun struct {
 	URL       string `json:"url"`
 }
 
+type AppDeployment struct {
+	SchemaVersion   string    `json:"schema_version"`
+	Type            string    `json:"type"`
+	Provider        string    `json:"provider"`
+	Application     string    `json:"application"`
+	Repository      string    `json:"repository"`
+	Environment     string    `json:"environment"`
+	Revision        string    `json:"revision"`
+	SyncInitiatedBy string    `json:"sync_initiated_by"`
+	Status          string    `json:"status"`
+	DeployedAt      time.Time `json:"deployed_at"`
+}
+
 type InfraDeployment struct {
 	SchemaVersion string    `json:"schema_version"`
 	Type          string    `json:"type"`
@@ -137,6 +150,13 @@ func NewCodeChange() CodeChange {
 	return CodeChange{
 		SchemaVersion: SchemaVersion,
 		Type:          "code_change",
+	}
+}
+
+func NewAppDeployment() AppDeployment {
+	return AppDeployment{
+		SchemaVersion: SchemaVersion,
+		Type:          "app_deployment",
 	}
 }
 

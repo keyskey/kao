@@ -71,3 +71,35 @@ func TestFilesystemPutAndQueryInfraDeployment(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 }
+
+func TestFilesystemPutAndQueryAppDeployment(t *testing.T) {
+	dir := t.TempDir()
+	fs, err := NewFilesystem(filepath.Join(dir, "evidence"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deployedAt := time.Date(2026, 6, 5, 16, 5, 0, 0, time.UTC)
+	ad := evidence.AppDeployment{
+		SchemaVersion: "v1",
+		Type:          "app_deployment",
+		Provider:      "argocd",
+		Application:   "kao-prod",
+		Repository:    "kao",
+		Revision:      "abc123def4567890abc123def4567890abc12345",
+		DeployedAt:    deployedAt,
+	}
+
+	ctx := context.Background()
+	if err := fs.PutAppDeployment(ctx, []evidence.AppDeployment{ad}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := fs.QueryAppDeployment(ctx, Filter{Date: "2026-06-05", Repositories: []string{"kao"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Application != "kao-prod" {
+		t.Fatalf("got %+v", got)
+	}
+}

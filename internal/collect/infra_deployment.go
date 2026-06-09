@@ -19,6 +19,10 @@ func RunInfraDeployment(ctx context.Context, opts Options) error {
 		return err
 	}
 
+	if !cfg.InfraDeploymentEnabled() {
+		return fmt.Errorf("infra_deployment collection requires evidence.infra_deployment.provider and apply_workflows or apply_job_names in config")
+	}
+
 	client, err := gh.New(cfg)
 	if err != nil {
 		return err

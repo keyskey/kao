@@ -140,15 +140,15 @@ KAO は状態を持たない。実行基盤は GitHub Actions、Kubernetes CronJ
 
 ## Schedule
 
-全 evidence を **毎日 00:00 UTC の単一ジョブ** で収集・評価する。Cron からは `kao run daily` を実行する（§8）。
+**毎日 00:00 UTC の単一ジョブ** で収集・評価する。Cron からは `kao run daily` を実行する（§8）。`repo_control` と `code_change` は常に収集する。`app_deployment` / `infra_deployment` は Configuration で該当 evidence が有効な場合のみ収集する（Terraform や Argo CD を使わない組織では省略可能）。
 
 | 順序 | 処理 | 収集対象 | 備考 |
 |---|---|---|---|
-| 1 | `repo_control` 収集 → storage | ジョブ実行時点のリポジトリ統制状態 | CODEOWNERS と Team Membership を含む |
-| 2 | `code_change` 収集 → storage | **前日**に default branch へマージされた PR | `--date` で対象日を指定 |
-| 3 | `app_deployment` 収集 → storage | **前日**の本番 Application デプロイ | 同上 |
-| 4 | `infra_deployment` 収集 → storage | **前日**の本番 Infrastructure デプロイ | 同上 |
-| 5 | `evaluate` ← storage → storage | 手順 1〜4 の証跡を入力として評価 | 結果を storage へ保存 |
+| 1 | `repo_control` 収集 → storage | ジョブ実行時点のリポジトリ統制状態 | 常に実行。CODEOWNERS と Team Membership を含む |
+| 2 | `code_change` 収集 → storage | **前日**に default branch へマージされた PR | 常に実行。`--date` で対象日を指定 |
+| 3 | `app_deployment` 収集 → storage | **前日**の本番 Application デプロイ | `evidence.app_deployment` + `providers.argocd` が設定されている場合のみ |
+| 4 | `infra_deployment` 収集 → storage | **前日**の本番 Infrastructure デプロイ | `evidence.infra_deployment`（`apply_workflows` または `apply_job_names`）が設定されている場合のみ |
+| 5 | `evaluate` ← storage → storage | 収集済み証跡を入力として評価 | 結果を storage へ保存。未収集の deployment 統制（CM-006/007）は評価対象にならない |
 
 `repo_control` を日次で記録する理由:
 
@@ -198,7 +198,7 @@ kao run daily --config kao.yaml --date 2026-06-05 --repository trading-api
 
 ## kao run daily（推奨）
 
-日次ジョブのエントリポイント。§7 Schedule の手順 1〜5 を順に実行する。
+日次ジョブのエントリポイント。§7 Schedule の手順を順に実行する。`app_deployment` / `infra_deployment` の collect は設定がある場合のみ実行され、単体の `kao collect app-deployment` / `kao collect infra-deployment` は設定必須である。
 
 ```bash
 kao run daily --config kao.yaml --date 2026-06-05
