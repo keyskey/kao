@@ -40,6 +40,17 @@ func excluded(name string, patterns []string) bool {
 	return false
 }
 
+// Matches reports whether name matches any include pattern and is not excluded.
+func Matches(name string, include, exclude []string) bool {
+	if excluded(name, exclude) {
+		return false
+	}
+	if len(include) == 0 {
+		return true
+	}
+	return matched(name, include)
+}
+
 func matched(name string, patterns []string) bool {
 	for _, p := range patterns {
 		ok, _ := filepath.Match(p, name)
