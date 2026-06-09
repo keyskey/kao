@@ -643,7 +643,7 @@ GitHub Actions 上で実行された Terraform apply の証跡（v1）。`eviden
 
 1. `scope.repositories` の各リポジトリについて、対象日に完了した CI run を列挙する
 2. workflow 名 / job 名が `apply_workflows` / `apply_job_names` に一致する run を apply 実行とみなす
-3. run に紐づく commit SHA、実行者、URL、workspace（run パラメータまたは環境変数から取得）を記録する
+3. マッチした apply job ごとに commit SHA、実行者、URL、workspace を記録する。workspace は GHA matrix job 名から取得する（共有 workflow で apply job 名が固定でも、GitHub が matrix 次元を `(dim1, dim2, ...)` 形式で suffix する）。`workspace` は先頭次元とし、KAO は `workspace_job_name_pattern`（デフォルト: `terraform apply \(([^,)]+)`）で抽出する
 
 ```json
 {
