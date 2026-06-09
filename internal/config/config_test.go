@@ -49,4 +49,13 @@ controls: {}
 	if *cfg.Evaluation.CodeChange.LookbackDays != 90 {
 		t.Error("expected lookback_days default 90")
 	}
+	if cfg.Evidence.InfraDeployment.Environment != "production" {
+		t.Error("expected infra_deployment.environment default production")
+	}
+	if cfg.Evidence.InfraDeployment.WorkspaceJobNamePattern == "" {
+		t.Error("expected workspace_job_name_pattern default")
+	}
+	if *cfg.Controls.InfraDeployment.Traceability.Required != true {
+		t.Error("expected infra_deployment.traceability.required default true")
+	}
 }
