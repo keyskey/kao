@@ -26,6 +26,7 @@ func NewCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.RepoControlFile, "repo-control", "", "repo_control JSONL file (--input files)")
 	cmd.Flags().StringArrayVar(&opts.CodeChangeFiles, "code-change", nil, "code_change JSONL file (--input files, repeatable)")
+	cmd.Flags().StringArrayVar(&opts.InfraDeploymentFiles, "infra-deployment", nil, "infra_deployment JSONL file (--input files, repeatable)")
 
 	return cmd
 }

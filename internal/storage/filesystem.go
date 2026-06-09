@@ -38,6 +38,20 @@ func (f *Filesystem) PutRepoControl(ctx context.Context, records []evidence.Repo
 	return nil
 }
 
+func (f *Filesystem) PutInfraDeployment(ctx context.Context, records []evidence.InfraDeployment) error {
+	byDate := make(map[string][]evidence.InfraDeployment)
+	for _, r := range records {
+		d := r.AppliedAt.UTC().Format("2006-01-02")
+		byDate[d] = append(byDate[d], r)
+	}
+	for date, batch := range byDate {
+		if err := f.writeJSONLBatch("infra_deployment", date, toAnySlice(batch)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (f *Filesystem) PutCodeChange(ctx context.Context, records []evidence.CodeChange) error {
 	byDate := make(map[string][]evidence.CodeChange)
 	for _, r := range records {
@@ -104,6 +118,14 @@ func (f *Filesystem) QueryRepoControl(ctx context.Context, filter Filter) ([]evi
 	return filterRepoControl(all, filter.Repositories), nil
 }
 
+func (f *Filesystem) QueryInfraDeployment(ctx context.Context, filter Filter) ([]evidence.InfraDeployment, error) {
+	all, err := f.readInfraDeploymentFile(filter.Date)
+	if err != nil {
+		return nil, err
+	}
+	return filterInfraDeployment(all, filter.Repositories), nil
+}
+
 func (f *Filesystem) QueryCodeChange(ctx context.Context, filter Filter) ([]evidence.CodeChange, error) {
 	all, err := f.readCodeChangeFile(filter.Date)
 	if err != nil {
@@ -125,6 +147,24 @@ func (f *Filesystem) readRepoControlFile(date string) ([]evidence.RepoControl, e
 	for _, item := range raw {
 		if rc, ok := item.(evidence.RepoControl); ok {
 			result = append(result, rc)
+		}
+	}
+	return result, nil
+}
+
+func (f *Filesystem) readInfraDeploymentFile(date string) ([]evidence.InfraDeployment, error) {
+	path := filepath.Join(f.basePath, "infra_deployment", date+".jsonl")
+	raw, err := f.readJSONLFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var result []evidence.InfraDeployment
+	for _, item := range raw {
+		if id, ok := item.(evidence.InfraDeployment); ok {
+			result = append(result, id)
 		}
 	}
 	return result, nil
@@ -255,6 +295,12 @@ func (f *Filesystem) readJSONLFile(path string) ([]any, error) {
 				return nil, err
 			}
 			result = append(result, cc)
+		case "infra_deployment":
+			var id evidence.InfraDeployment
+			if err := json.Unmarshal(raw, &id); err != nil {
+				return nil, err
+			}
+			result = append(result, id)
 		default:
 			var ev evidence.Evaluation
 			if err := json.Unmarshal(raw, &ev); err == nil && ev.ControlID != "" {
@@ -271,6 +317,20 @@ func filterRepoControl(items []evidence.RepoControl, repos []string) []evidence.
 	}
 	set := toSet(repos)
 	var out []evidence.RepoControl
+	for _, item := range items {
+		if set[item.Repository] {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+func filterInfraDeployment(items []evidence.InfraDeployment, repos []string) []evidence.InfraDeployment {
+	if len(repos) == 0 {
+		return items
+	}
+	set := toSet(repos)
+	var out []evidence.InfraDeployment
 	for _, item := range items {
 		if set[item.Repository] {
 			out = append(out, item)

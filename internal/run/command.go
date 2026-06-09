@@ -18,7 +18,7 @@ func NewCommand() *cobra.Command {
 
 	dailyCmd := &cobra.Command{
 		Use:   "daily",
-		Short: "Run daily collection and evaluation (GitHub evidence only in MVP)",
+		Short: "Run daily collection and evaluation",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RunDaily(context.Background(), DailyOptions{
 				ConfigPath:   configPath,

@@ -77,6 +77,27 @@ type CIRun struct {
 	URL       string `json:"url"`
 }
 
+type InfraDeployment struct {
+	SchemaVersion string    `json:"schema_version"`
+	Type          string    `json:"type"`
+	Provider      string    `json:"provider"`
+	Repository    string    `json:"repository"`
+	Workspace     string    `json:"workspace"`
+	Environment   string    `json:"environment"`
+	CommitSHA     string    `json:"commit_sha"`
+	Execution     Execution `json:"execution"`
+	AppliedAt     time.Time `json:"applied_at"`
+}
+
+type Execution struct {
+	CIProvider  string `json:"ci_provider"`
+	Workflow    string `json:"workflow"`
+	RunID       string `json:"run_id"`
+	Status      string `json:"status"`
+	TriggeredBy string `json:"triggered_by"`
+	URL         string `json:"url"`
+}
+
 type Evaluation struct {
 	SchemaVersion string         `json:"schema_version"`
 	ControlID     string         `json:"control_id"`
@@ -116,6 +137,13 @@ func NewCodeChange() CodeChange {
 	return CodeChange{
 		SchemaVersion: SchemaVersion,
 		Type:          "code_change",
+	}
+}
+
+func NewInfraDeployment() InfraDeployment {
+	return InfraDeployment{
+		SchemaVersion: SchemaVersion,
+		Type:          "infra_deployment",
 	}
 }
 

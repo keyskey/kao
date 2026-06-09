@@ -42,8 +42,9 @@ type RepositoryScope struct {
 }
 
 type Evidence struct {
-	RepoControl EvidenceRepoControl `yaml:"repo_control"`
-	CodeChange  EvidenceCodeChange  `yaml:"code_change"`
+	RepoControl     EvidenceRepoControl     `yaml:"repo_control"`
+	CodeChange      EvidenceCodeChange      `yaml:"code_change"`
+	InfraDeployment EvidenceInfraDeployment `yaml:"infra_deployment"`
 }
 
 type EvidenceRepoControl struct {
@@ -57,9 +58,32 @@ type EvidenceCodeChange struct {
 	Scope    *RepositoryScope `yaml:"scope,omitempty"`
 }
 
+type InfraDeploymentScope struct {
+	Repositories RepositoryScope `yaml:"repositories"`
+	Workspaces   RepositoryScope `yaml:"workspaces"`
+}
+
+type EvidenceInfraDeployment struct {
+	Provider                string                `yaml:"provider"`
+	Environment             string                `yaml:"environment"`
+	Scope                   *InfraDeploymentScope `yaml:"scope,omitempty"`
+	ApplyWorkflows          []string              `yaml:"apply_workflows"`
+	ApplyJobNames           []string              `yaml:"apply_job_names"`
+	WorkspaceJobNamePattern string                `yaml:"workspace_job_name_pattern"`
+}
+
 type Controls struct {
-	RepoControl RepoControlControls `yaml:"repo_control"`
-	CodeChange  CodeChangeControls  `yaml:"code_change"`
+	RepoControl     RepoControlControls     `yaml:"repo_control"`
+	CodeChange      CodeChangeControls      `yaml:"code_change"`
+	InfraDeployment InfraDeploymentControls `yaml:"infra_deployment"`
+}
+
+type InfraDeploymentControls struct {
+	Traceability InfraDeploymentTraceabilityControls `yaml:"traceability"`
+}
+
+type InfraDeploymentTraceabilityControls struct {
+	Required *bool `yaml:"required,omitempty"`
 }
 
 type RepoControlControls struct {
@@ -172,6 +196,20 @@ func applyDefaults(cfg *Config) {
 		v := 90
 		cfg.Evaluation.CodeChange.LookbackDays = &v
 	}
+
+	id := &cfg.Evidence.InfraDeployment
+	if id.Environment == "" {
+		id.Environment = "production"
+	}
+	if id.WorkspaceJobNamePattern == "" {
+		id.WorkspaceJobNamePattern = `terraform apply \(([^,)]+)`
+	}
+
+	idc := &cfg.Controls.InfraDeployment.Traceability
+	if idc.Required == nil {
+		v := true
+		idc.Required = &v
+	}
 }
 
 func (c *Config) GitHubToken() (string, error) {
@@ -211,6 +249,21 @@ func (c *Config) RepositoriesFor(domain string) RepositoryScope {
 		if c.Evidence.CodeChange.Scope != nil {
 			return *c.Evidence.CodeChange.Scope
 		}
+	case "infra_deployment":
+		if c.Evidence.InfraDeployment.Scope != nil && len(c.Evidence.InfraDeployment.Scope.Repositories.Include) > 0 {
+			return c.Evidence.InfraDeployment.Scope.Repositories
+		}
 	}
 	return c.Scope.Defaults.Repositories
+}
+
+func (c *Config) WorkspacesForInfraDeployment() RepositoryScope {
+	if c.Evidence.InfraDeployment.Scope != nil {
+		return c.Evidence.InfraDeployment.Scope.Workspaces
+	}
+	return RepositoryScope{}
+}
+
+func (c *Config) InfraDeploymentConfig() EvidenceInfraDeployment {
+	return c.Evidence.InfraDeployment
 }
