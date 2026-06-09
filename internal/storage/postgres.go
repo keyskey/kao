@@ -39,6 +39,24 @@ func (p *Postgres) PutRepoControl(ctx context.Context, records []evidence.RepoCo
 	return nil
 }
 
+func (p *Postgres) PutInfraDeployment(ctx context.Context, records []evidence.InfraDeployment) error {
+	for _, r := range records {
+		payload, err := json.Marshal(r)
+		if err != nil {
+			return err
+		}
+		_, err = p.pool.Exec(ctx, `
+			INSERT INTO infra_deployment_evidence (repository, workspace, applied_at, payload)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (repository, workspace, applied_at) DO UPDATE SET payload = EXCLUDED.payload
+		`, r.Repository, r.Workspace, r.AppliedAt, payload)
+		if err != nil {
+			return fmt.Errorf("upsert infra_deployment %s#%s: %w", r.Repository, r.Workspace, err)
+		}
+	}
+	return nil
+}
+
 func (p *Postgres) PutCodeChange(ctx context.Context, records []evidence.CodeChange) error {
 	for _, r := range records {
 		payload, err := json.Marshal(r)
@@ -79,6 +97,30 @@ func (p *Postgres) QueryRepoControl(ctx context.Context, filter Filter) ([]evide
 	defer rows.Close()
 
 	return scanRepoControl(rows)
+}
+
+func (p *Postgres) QueryInfraDeployment(ctx context.Context, filter Filter) ([]evidence.InfraDeployment, error) {
+	query := `SELECT payload FROM infra_deployment_evidence WHERE 1=1`
+	args := []any{}
+	argN := 1
+
+	if filter.Date != "" {
+		query += fmt.Sprintf(` AND applied_at::date = $%d::date`, argN)
+		args = append(args, filter.Date)
+		argN++
+	}
+	if len(filter.Repositories) > 0 {
+		query += fmt.Sprintf(` AND repository = ANY($%d)`, argN)
+		args = append(args, filter.Repositories)
+	}
+
+	rows, err := p.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanInfraDeployment(rows)
 }
 
 func (p *Postgres) QueryCodeChange(ctx context.Context, filter Filter) ([]evidence.CodeChange, error) {
@@ -168,6 +210,22 @@ func scanRepoControl(rows rowScanner) ([]evidence.RepoControl, error) {
 			return nil, err
 		}
 		result = append(result, rc)
+	}
+	return result, rows.Err()
+}
+
+func scanInfraDeployment(rows rowScanner) ([]evidence.InfraDeployment, error) {
+	var result []evidence.InfraDeployment
+	for rows.Next() {
+		var payload []byte
+		if err := rows.Scan(&payload); err != nil {
+			return nil, err
+		}
+		var id evidence.InfraDeployment
+		if err := json.Unmarshal(payload, &id); err != nil {
+			return nil, err
+		}
+		result = append(result, id)
 	}
 	return result, rows.Err()
 }
