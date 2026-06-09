@@ -1,0 +1,1 @@
+{"schema_version":"v1","type":"app_deployment","provider":"argocd","application":"kao-prod","repository":"kao","environment":"production","revision":"abc123def4567890abc123def4567890abc12345","sync_initiated_by":"alice","status":"succeeded","deployed_at":"2026-06-05T16:05:00Z"}
