@@ -28,6 +28,47 @@ GitHub + Kubernetes + Argo CD + Terraform 環境において、変更管理統�
 
 CM-001〜010 により統制を評価する。詳細は [設計ドキュメント](docs/design-doc.md) を参照。
 
+## Install
+
+`go install` でインストール:
+
+```bash
+go install github.com/keyskey/kao/cmd/kao@latest
+```
+
+CI やチーム運用ではバージョンを pin する:
+
+```bash
+go install github.com/keyskey/kao/cmd/kao@v0.1.0
+```
+
+## Binary Distribution
+
+GitHub Releases からプリビルドバイナリを配布する。対応アーカイブ:
+
+- darwin-arm64
+- darwin-amd64
+- linux-arm64
+- linux-amd64
+
+最新版をインストール:
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/keyskey/kao/main/scripts/install.sh" | sh
+```
+
+特定バージョンをインストール:
+
+```bash
+VERSION=v0.1.0 curl -fsSL "https://raw.githubusercontent.com/keyskey/kao/main/scripts/install.sh" | sh
+```
+
+カスタムインストール先:
+
+```bash
+INSTALL_DIR="$HOME/.local/bin" curl -fsSL "https://raw.githubusercontent.com/keyskey/kao/main/scripts/install.sh" | sh
+```
+
 ## 運用
 
 毎日 00:00 UTC に `kao run daily` を実行する。証跡と評価結果は PostgreSQL（推奨）または filesystem backend に保存する。
@@ -74,6 +115,49 @@ export DATABASE_URL='postgres://kao:kao@localhost:5432/kao?sslmode=disable'
   --output -
 ```
 
+## Versioning Policy
+
+KAO は [Semantic Versioning](https://semver.org/) に従う。
+
+pre-1.0 フェーズでは `0.x` でバージョニングし、統制評価ロジックを実運用で検証する。
+
+- `PATCH` (`0.1.0` -> `0.1.1`): バグ修正のみ
+- `MINOR` (`0.1.1` -> `0.2.0`): 新機能・挙動変更・破壊的変更を含む
+- `MAJOR` (`1.x`): インターフェースと出力が安定した後に使用
+
+`0.x` のマイナーバージョン間ではインターフェースや出力形式が変わる可能性がある。タグは `vX.Y.Z` 形式（例: `v0.1.0`）。
+
+## Release Flow
+
+`v*` タグの push で GoReleaser が GitHub Release を自動作成する。リリースノートはタグ間の git コミットから生成される。
+
+次の SemVer タグを作成:
+
+```bash
+make tag-patch
+make tag-minor
+make tag-major
+# or
+make tag-next TYPE=patch
+make tag-next TYPE=minor
+make tag-next TYPE=major
+```
+
+初回リリース例:
+
+```bash
+make tag-minor
+git push origin v0.1.0
+```
+
+push 後:
+
+- GitHub Actions workflow `release` が自動実行される
+- GitHub Release が作成される
+- OS/arch アーカイブと `checksums.txt` がアップロードされる
+
+リリースノートをきれいに保つため、コミットメッセージには `feat:`, `fix:`, `refactor:`, `perf:` などのプレフィックスを推奨する。
+
 ## ステータス
 
-MVP 実装中。`repo_control` / `code_change` の GitHub 収集・評価・PostgreSQL/filesystem 保存に対応。
+v0.1.0 リリース。`repo_control` / `code_change` / `app_deployment` / `infra_deployment` の収集・評価・PostgreSQL/filesystem 保存に対応（MVP）。
