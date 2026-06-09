@@ -6,8 +6,16 @@ import (
 	"time"
 
 	"github.com/keyskey/kao/internal/collect"
+	"github.com/keyskey/kao/internal/config"
 	"github.com/keyskey/kao/internal/evaluate"
 )
+
+func loadDailyConfig(path string) (*config.Config, error) {
+	if path == "" {
+		path = config.DefaultConfigPath
+	}
+	return config.Load(path)
+}
 
 type DailyOptions struct {
 	ConfigPath   string
@@ -34,6 +42,16 @@ func RunDaily(ctx context.Context, opts DailyOptions) error {
 
 	if err := collect.RunCodeChange(ctx, collectOpts); err != nil {
 		return fmt.Errorf("code-change collect: %w", err)
+	}
+
+	cfg, err := loadDailyConfig(opts.ConfigPath)
+	if err != nil {
+		return err
+	}
+	if cfg.AppDeploymentEnabled() {
+		if err := collect.RunAppDeployment(ctx, collectOpts); err != nil {
+			return fmt.Errorf("app-deployment collect: %w", err)
+		}
 	}
 
 	if err := collect.RunInfraDeployment(ctx, collectOpts); err != nil {
