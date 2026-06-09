@@ -22,8 +22,9 @@ type Options struct {
 	Output       string
 	Format       string
 
-	RepoControlFile string
-	CodeChangeFiles []string
+	RepoControlFile      string
+	CodeChangeFiles      []string
+	InfraDeploymentFiles []string
 }
 
 func Run(ctx context.Context, opts Options) error {
@@ -35,6 +36,8 @@ func Run(ctx context.Context, opts Options) error {
 	evaluatedAt := time.Now().UTC()
 	var repoControls []evidence.RepoControl
 	var codeChanges []evidence.CodeChange
+	var infraDeployments []evidence.InfraDeployment
+	var joinChanges map[JoinKey]evidence.CodeChange
 
 	switch opts.Input {
 	case "", "storage":
@@ -54,6 +57,14 @@ func Run(ctx context.Context, opts Options) error {
 		if err != nil {
 			return err
 		}
+		infraDeployments, err = backend.QueryInfraDeployment(ctx, filter)
+		if err != nil {
+			return err
+		}
+		joinChanges, err = loadJoinChanges(ctx, backend, cfg, infraDeployments)
+		if err != nil {
+			return err
+		}
 	case "files":
 		repoControls, err = readRepoControlFile(opts.RepoControlFile)
 		if err != nil {
@@ -66,16 +77,31 @@ func Run(ctx context.Context, opts Options) error {
 			}
 			codeChanges = append(codeChanges, changes...)
 		}
+		for _, path := range opts.InfraDeploymentFiles {
+			deployments, err := readInfraDeploymentFile(path)
+			if err != nil {
+				return err
+			}
+			infraDeployments = append(infraDeployments, deployments...)
+		}
+		joinChanges = JoinCodeChange(codeChanges)
 	default:
 		return fmt.Errorf("unsupported input: %q", opts.Input)
 	}
 
-	results := EvaluateAll(cfg, repoControls, codeChanges, evaluatedAt)
+	results := EvaluateAll(cfg, repoControls, codeChanges, infraDeployments, joinChanges, evaluatedAt)
 
 	return writeResults(ctx, cfg, opts, results)
 }
 
-func EvaluateAll(cfg *config.Config, repoControls []evidence.RepoControl, codeChanges []evidence.CodeChange, evaluatedAt time.Time) []evidence.Evaluation {
+func EvaluateAll(
+	cfg *config.Config,
+	repoControls []evidence.RepoControl,
+	codeChanges []evidence.CodeChange,
+	infraDeployments []evidence.InfraDeployment,
+	joinChanges map[JoinKey]evidence.CodeChange,
+	evaluatedAt time.Time,
+) []evidence.Evaluation {
 	var results []evidence.Evaluation
 	for _, rc := range repoControls {
 		results = append(results, evaluateRepoControl(cfg, rc, evaluatedAt)...)
@@ -84,7 +110,43 @@ func EvaluateAll(cfg *config.Config, repoControls []evidence.RepoControl, codeCh
 		rc := findRepoControlForCodeChange(repoControls, cc)
 		results = append(results, evaluateCodeChange(cfg, cc, rc, evaluatedAt)...)
 	}
+	for _, id := range infraDeployments {
+		key := JoinKey{Repository: id.Repository, CommitSHA: id.CommitSHA}
+		var cc *evidence.CodeChange
+		if joined, ok := joinChanges[key]; ok {
+			cc = &joined
+		}
+		results = append(results, evaluateInfraDeployment(cfg, id, cc, evaluatedAt)...)
+	}
 	return results
+}
+
+func loadJoinChanges(ctx context.Context, backend storage.Backend, cfg *config.Config, infraDeployments []evidence.InfraDeployment) (map[JoinKey]evidence.CodeChange, error) {
+	if len(infraDeployments) == 0 {
+		return map[JoinKey]evidence.CodeChange{}, nil
+	}
+
+	repos := make([]string, 0, len(infraDeployments))
+	shas := make([]string, 0, len(infraDeployments))
+	seenRepo := make(map[string]bool)
+	seenSHA := make(map[string]bool)
+	for _, id := range infraDeployments {
+		if id.Repository != "" && !seenRepo[id.Repository] {
+			seenRepo[id.Repository] = true
+			repos = append(repos, id.Repository)
+		}
+		if id.CommitSHA != "" && !seenSHA[id.CommitSHA] {
+			seenSHA[id.CommitSHA] = true
+			shas = append(shas, id.CommitSHA)
+		}
+	}
+
+	lookback := *cfg.Evaluation.CodeChange.LookbackDays
+	changes, err := backend.QueryCodeChangeForJoin(ctx, repos, shas, lookback)
+	if err != nil {
+		return nil, err
+	}
+	return JoinCodeChange(changes), nil
 }
 
 func writeResults(ctx context.Context, cfg *config.Config, opts Options, results []evidence.Evaluation) error {
@@ -141,6 +203,10 @@ func readRepoControlFile(path string) ([]evidence.RepoControl, error) {
 
 func readCodeChangeFile(path string) ([]evidence.CodeChange, error) {
 	return readJSONLFile[evidence.CodeChange](path)
+}
+
+func readInfraDeploymentFile(path string) ([]evidence.InfraDeployment, error) {
+	return readJSONLFile[evidence.InfraDeployment](path)
 }
 
 func readJSONLFile[T any](path string) ([]T, error) {

@@ -70,6 +70,55 @@ func TestEvaluateCodeChangeCM008Fail(t *testing.T) {
 	}
 }
 
+func TestEvaluateInfraDeploymentCM007Pass(t *testing.T) {
+	cfg := &config.Config{}
+	applyTestDefaults(cfg)
+
+	id := evidence.InfraDeployment{
+		Repository:  "platform-infra",
+		Workspace:   "prod-gke",
+		CommitSHA:   "def456",
+		AppliedAt:   time.Date(2026, 6, 5, 16, 5, 0, 0, time.UTC),
+		Execution:   evidence.Execution{URL: "https://github.com/org/platform-infra/actions/runs/1"},
+	}
+	cc := evidence.CodeChange{
+		Repository:    "platform-infra",
+		PRNumber:      10,
+		CommitSHA:     "def456",
+		Author:        "alice",
+		ApprovalCount: 1,
+		MergedAt:      time.Date(2026, 6, 4, 0, 0, 0, 0, time.UTC),
+	}
+	join := map[JoinKey]evidence.CodeChange{
+		{Repository: "platform-infra", CommitSHA: "def456"}: cc,
+	}
+
+	results := EvaluateAll(cfg, nil, nil, []evidence.InfraDeployment{id}, join, id.AppliedAt)
+	cm007 := findResult(results, "CM-007")
+	if cm007 == nil || cm007.Status != evidence.StatusPassed {
+		t.Fatalf("CM-007 should pass, got %+v", cm007)
+	}
+}
+
+func TestEvaluateInfraDeploymentCM007JoinFail(t *testing.T) {
+	cfg := &config.Config{}
+	applyTestDefaults(cfg)
+
+	id := evidence.InfraDeployment{
+		Repository: "platform-infra",
+		Workspace:  "prod-gke",
+		CommitSHA:  "missing",
+		AppliedAt:  time.Date(2026, 6, 5, 16, 5, 0, 0, time.UTC),
+		Execution:  evidence.Execution{URL: "https://github.com/org/platform-infra/actions/runs/1"},
+	}
+
+	results := EvaluateAll(cfg, nil, nil, []evidence.InfraDeployment{id}, map[JoinKey]evidence.CodeChange{}, id.AppliedAt)
+	cm007 := findResult(results, "CM-007")
+	if cm007 == nil || cm007.Status != evidence.StatusFailed {
+		t.Fatalf("CM-007 should fail, got %+v", cm007)
+	}
+}
+
 func applyTestDefaults(cfg *config.Config) {
 	trueVal := true
 	falseVal := false
@@ -82,6 +131,7 @@ func applyTestDefaults(cfg *config.Config) {
 	cfg.Controls.RepoControl.Codeowners.Required = &trueVal
 	cfg.Controls.CodeChange.CI.RequirePass = &trueVal
 	cfg.Controls.CodeChange.Approver.MustBeAuthorized = &trueVal
+	cfg.Controls.InfraDeployment.Traceability.Required = &trueVal
 }
 
 func findResult(results []evidence.Evaluation, controlID string) *evidence.Evaluation {
